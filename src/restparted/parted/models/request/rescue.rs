@@ -1,7 +1,7 @@
 use std::error::Error;
 
 use crate::restparted::{
-	model::base::Deserializable,
+	model::base::{Deserializable, RawError},
 	parted::models::{commands::Command, device::Device},
 };
 
@@ -30,8 +30,29 @@ impl Deserializable for RescueRequest {
 		let data_device = &data["device"];
 		let data_start = &data["start"];
 		let data_end = &data["end"];
-		assert!(data_device.is_string() && data_start.is_f64() && data_end.is_f64());
-    Ok(RescueRequest {
+
+		if !data_device.is_string() {
+			return Err(Box::new(RawError::new(
+				&data_device.to_string(),
+				"Property does not match type",
+			)));
+		}
+
+		if !data_start.is_f64() {
+			return Err(Box::new(RawError::new(
+				&data_start.to_string(),
+				"Property does not match type",
+			)));
+		}
+
+		if !data_end.is_f64() {
+			return Err(Box::new(RawError::new(
+				&data_end.to_string(),
+				"Property does not match type",
+			)));
+		}
+
+		Ok(RescueRequest {
 			device: Device::try_from(data_device.as_str().unwrap())?,
 			start: data_start.as_f64().unwrap(),
 			end: data_end.as_f64().unwrap(),

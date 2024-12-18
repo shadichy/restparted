@@ -93,7 +93,13 @@ impl Deserializable for PrintRequest {
 	fn from_json(data: serde_json::Value) -> Result<Self, Self::Error> {
 		let data_device = &data["device"];
 		let data_argument = &data["argument"];
-		assert!(data_argument.is_string() || data_device.is_string());
+
+		if !data_argument.is_string() && !data_device.is_string() {
+			return Err(Box::new(RawError::new(
+				&data.to_string(),
+				"Property does not match type",
+			)));
+		}
 
 		if data_argument.is_string() && data_argument.as_str().unwrap() == "all" {
 			return Ok(PrintRequest::all());

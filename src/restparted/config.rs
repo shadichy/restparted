@@ -14,6 +14,8 @@ pub struct Config {
 	pub port: u16,
 
 	pub fallback_device: String,
+
+	pub max_worker: usize,
 }
 
 impl Config {
@@ -31,6 +33,7 @@ impl Config {
 			address: String::new(),
 			port: 0,
 			fallback_device: String::new(),
+			max_worker: 1,
 		}
 	}
 
@@ -92,6 +95,7 @@ impl Default for Config {
 			address: String::from("0.0.0.0"),
 			port: 8443,
 			fallback_device: fallback_device,
+			max_worker: 4,
 		}
 	}
 }

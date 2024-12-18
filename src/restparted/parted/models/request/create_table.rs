@@ -1,7 +1,7 @@
 use std::error::Error;
 
 use crate::restparted::{
-	model::base::Deserializable,
+	model::base::{Deserializable, RawError},
 	parted::{
 		models::{commands::Command, device::Device},
 		system::device::partition_tables::PartitionTable,
@@ -32,7 +32,19 @@ impl Deserializable for CreateTableRequest {
 		let data_device = &data["device"];
 		let data_partition_table = &data["partition_table"];
 
-		assert!(data_partition_table.is_string() && data_device.is_string());
+		if !data_device.is_string() {
+			return Err(Box::new(RawError::new(
+				&data_device.to_string(),
+				"Property does not match type",
+			)));
+		}
+
+		if !data_partition_table.is_string() {
+			return Err(Box::new(RawError::new(
+				&data_partition_table.to_string(),
+				"Property does not match type",
+			)));
+		}
 
 		Ok(CreateTableRequest {
 			device: Device::try_from(data_device.as_str().unwrap())?,

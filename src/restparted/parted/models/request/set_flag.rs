@@ -1,7 +1,7 @@
 use std::error::Error;
 
 use crate::restparted::{
-	model::base::Deserializable,
+	model::base::{Deserializable, RawError},
 	parted::{
 		models::{commands::Command, device::Device},
 		system::device::{disk_flags::DiskFlag, flag_state::FlagState},
@@ -33,11 +33,28 @@ impl Deserializable for SetFlagRequest {
 		let data_device = &data["device"];
 		let data_flag = &data["flag"];
 		let data_state = &data["state"];
-		assert!(
-			data_device.is_string()
-				&& data_flag.is_string()
-				&& (data_state.is_string() || data_state.is_u64())
-		);
+
+		if !data_device.is_string() {
+			return Err(Box::new(RawError::new(
+				&data_device.to_string(),
+				"Property does not match type",
+			)));
+		}
+
+		if !data_flag.is_string() {
+			return Err(Box::new(RawError::new(
+				&data_flag.to_string(),
+				"Property does not match type",
+			)));
+		}
+
+		if !data_state.is_u64() && !data_state.is_string() {
+			return Err(Box::new(RawError::new(
+				&data_state.to_string(),
+				"Property does not match type",
+			)));
+		}
+
 		let state: FlagState;
 		if data_state.is_string() {
 			state = FlagState::try_from(data_state.as_str().unwrap())?

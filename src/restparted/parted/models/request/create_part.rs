@@ -1,10 +1,10 @@
 use std::error::Error;
 
 use crate::restparted::{
-	model::base::Deserializable,
+	model::base::{Deserializable, RawError},
 	parted::{
 		models::{commands::Command, device::Device},
-		system::{filesystem::FileSystem, device::partition_types::PartitionType},
+		system::{device::partition_types::PartitionType, filesystem::FileSystem},
 	},
 };
 
@@ -54,7 +54,26 @@ impl Deserializable for CreatePartRequest {
 		let data_start = &data["start"];
 		let data_end = &data["end"];
 
-		assert!(data_device.is_string() && data_start.is_f64() && data_end.is_f64());
+		if !data_device.is_string() {
+			return Err(Box::new(RawError::new(
+				&data_device.to_string(),
+				"Property does not match type",
+			)));
+		}
+
+		if !data_start.is_f64() {
+			return Err(Box::new(RawError::new(
+				&data_start.to_string(),
+				"Property does not match type",
+			)));
+		}
+
+		if !data_end.is_f64() {
+			return Err(Box::new(RawError::new(
+				&data_end.to_string(),
+				"Property does not match type",
+			)));
+		}
 
 		let part_type: Option<PartitionType>;
 		if data_part_type.is_string() {

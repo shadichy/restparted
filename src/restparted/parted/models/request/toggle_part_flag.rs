@@ -1,7 +1,7 @@
 use std::error::Error;
 
 use crate::restparted::{
-	model::base::Deserializable,
+	model::base::{Deserializable, RawError},
 	parted::{
 		models::{commands::Command, device::Device},
 		system::device::partition_flags::PartitionFlag,
@@ -40,7 +40,14 @@ impl Deserializable for TogglePartFlagRequest {
 		let data_device = &data["device"];
 		let data_partition_number = &data["number"];
 		let data_flag = &data["flag"];
-		assert!(data_device.is_string());
+
+		if !data_device.is_string() {
+			return Err(Box::new(RawError::new(
+				&data_device.to_string(),
+				"Property does not match type",
+			)));
+		}
+
 		let flag: Option<PartitionFlag>;
 		if data_flag.is_string() {
 			flag = Some(PartitionFlag::try_from(data_flag.as_str().unwrap())?)

@@ -1,7 +1,7 @@
 use std::error::Error;
 
 use crate::restparted::{
-	model::base::Deserializable,
+	model::base::{Deserializable, RawError},
 	parted::{
 		models::{commands::Command, device::Device},
 		system::device::disk_flags::DiskFlag,
@@ -37,7 +37,14 @@ impl Deserializable for ToggleFlagRequest {
 	fn from_json(data: serde_json::Value) -> Result<Self, Self::Error> {
 		let data_device = &data["device"];
 		let data_flag = &data["flag"];
-		assert!(data_device.is_string());
+
+		if !data_device.is_string() {
+			return Err(Box::new(RawError::new(
+				&data_device.to_string(),
+				"Property does not match type",
+			)));
+		}
+
 		let flag: Option<DiskFlag>;
 		if data_flag.is_string() {
 			flag = Some(DiskFlag::try_from(data_flag.as_str().unwrap())?)

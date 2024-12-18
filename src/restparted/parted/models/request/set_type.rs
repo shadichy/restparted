@@ -1,7 +1,7 @@
 use std::error::Error;
 
 use crate::restparted::{
-	model::base::Deserializable,
+	model::base::{Deserializable, RawError},
 	parted::{
 		models::{commands::Command, device::Device},
 		system::device::partition_id::PartitionID,
@@ -33,11 +33,28 @@ impl Deserializable for SetTypeRequest {
 		let data_device = &data["device"];
 		let data_partition_number = &data["number"];
 		let data_type_id = &data["id"];
-		assert!(
-			data_device.is_string()
-				&& data_partition_number.is_u64()
-				&& (data_type_id.is_string() || data_type_id.is_i64())
-		);
+
+		if !data_device.is_string() {
+			return Err(Box::new(RawError::new(
+				&data_device.to_string(),
+				"Property does not match type",
+			)));
+		}
+
+		if !data_partition_number.is_u64() {
+			return Err(Box::new(RawError::new(
+				&data_partition_number.to_string(),
+				"Property does not match type",
+			)));
+		}
+
+		if !data_type_id.is_i64() && !data_type_id.is_string() {
+			return Err(Box::new(RawError::new(
+				&data_type_id.to_string(),
+				"Property does not match type",
+			)));
+		}
+
     let type_id: PartitionID;
     if data_type_id.is_string() {
       type_id = PartitionID::try_from(data_type_id.as_str().unwrap())?

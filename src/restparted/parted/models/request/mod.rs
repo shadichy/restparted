@@ -17,8 +17,8 @@ use toggle_part_flag::TogglePartFlagRequest;
 use version::VersionRequest;
 
 use crate::restparted::{
-	model::base::Deserializable,
-	parted::{models::commands::Command, models::device::Device},
+	model::base::{Deserializable, RawError},
+	parted::models::{commands::Command, device::Device},
 };
 
 mod align_check;
@@ -83,7 +83,14 @@ impl Deserializable for Request {
 
 	fn from_json(data: serde_json::Value) -> Result<Self, Self::Error> {
 		let data_command = &data["command"];
-		assert!(data_command.is_string());
+
+		if !data_command.is_string() {
+			return Err(Box::new(RawError::new(
+				&data_command.to_string(),
+				"Property does not match type",
+			)));
+		}
+
 		Ok(match Command::from(data_command.as_str().unwrap()) {
 			Command::Version => Self::from(VersionRequest::from_json(data.clone())?),
 			Command::Print => Self::from(PrintRequest::from_json(data.clone())?),

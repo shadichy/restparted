@@ -1,8 +1,8 @@
 use std::error::Error;
 
 use crate::restparted::{
-	model::base::Deserializable,
-	parted::{models::commands::Command, models::device::Device},
+	model::base::{Deserializable, RawError},
+	parted::models::{commands::Command, device::Device},
 };
 
 use super::Request;
@@ -29,7 +29,19 @@ impl Deserializable for DeletePartRequest {
 		let data_device = &data["device"];
 		let data_partition_number = &data["number"];
 
-		assert!(data_partition_number.is_u64() && data_device.is_string());
+		if !data_device.is_string() {
+			return Err(Box::new(RawError::new(
+				&data_device.to_string(),
+				"Property does not match type",
+			)));
+		}
+
+		if !data_partition_number.is_u64() {
+			return Err(Box::new(RawError::new(
+				&data_partition_number.to_string(),
+				"Property does not match type",
+			)));
+		}
 
 		Ok(DeletePartRequest {
 			device: Device::try_from(data_device.as_str().unwrap())?,

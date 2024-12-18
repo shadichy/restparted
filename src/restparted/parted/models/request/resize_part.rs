@@ -1,7 +1,7 @@
 use std::error::Error;
 
 use crate::restparted::{
-	model::base::Deserializable,
+	model::base::{Deserializable, RawError},
 	parted::models::{commands::Command, device::Device},
 };
 
@@ -30,7 +30,28 @@ impl Deserializable for ResizePartRequest {
 		let data_device = &data["device"];
 		let data_partition_number = &data["number"];
 		let data_end = &data["end"];
-		assert!(data_device.is_string() && data_partition_number.is_u64() && data_end.is_f64());
+
+		if !data_device.is_string() {
+			return Err(Box::new(RawError::new(
+				&data_device.to_string(),
+				"Property does not match type",
+			)));
+		}
+
+		if !data_partition_number.is_u64() {
+			return Err(Box::new(RawError::new(
+				&data_partition_number.to_string(),
+				"Property does not match type",
+			)));
+		}
+
+		if !data_end.is_f64() {
+			return Err(Box::new(RawError::new(
+				&data_end.to_string(),
+				"Property does not match type",
+			)));
+		}
+
     Ok(ResizePartRequest {
 			device: Device::try_from(data_device.as_str().unwrap())?,
 			partition_number: data_partition_number.as_u64().unwrap(),

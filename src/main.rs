@@ -1,92 +1,112 @@
-use std::{
-    io::{self, BufReader, Write},
-    net::{SocketAddr, TcpStream as StdTcpStream},
-    sync::Arc,
-};
+mod restparted;
 
-use actix_http::{header::HeaderValue, Error, HttpService, Request, Response, StatusCode};
+use actix_http::{
+	body, header::HeaderValue, Error, HttpService, Method, Request, Response, ResponseBuilder,
+	StatusCode,
+};
 use actix_server::Server;
-use actix_tls::connect::rustls_0_23::webpki_roots_cert_store;
 use actix_utils::future::ok;
-use rustls::{pki_types::ServerName, ServerConfig};
-use rustls_pemfile::{certs, pkcs8_private_keys};
-use serde_json::json;
+use futures_util::StreamExt;
+use restparted::model::base::Deserializable;
+use rustls::ServerConfig;
+use serde_json::{json, Value};
+use std::{borrow::BorrowMut, io, time::Duration};
 use tracing::info;
 
 #[actix_rt::main]
 async fn main() -> io::Result<()> {
-    env_logger::init_from_env(env_logger::Env::new().default_filter_or("info"));
+	env_logger::init_from_env(env_logger::Env::new().default_filter_or("info"));
 
-    let appname = "restparted".to_string();
-    let endpoint = "0.0.0.0".to_string();
-    let port = 8443u16;
+	restparted::initialize();
 
-    info!(
-        "{}",
-        format!(
-            "starting {} at https://{}:{}",
-            appname,
-            endpoint,
-            port.to_string()
-        )
-    );
+	let appname = restparted::config::Config::APPNAME.to_string();
 
-    Server::build()
-        .bind(appname, (endpoint, port), || {
-            HttpService::build()
-                .finish(|req: Request| {
-                    info!("{req:?}");
+	let config = restparted::CONFIG.lock().unwrap();
+	let address: String = (&config.address).clone();
+	let port: u16 = config.port;
 
-                    let mut res = Response::build(StatusCode::OK);
-                    res.insert_header((
-                        "content-type",
-                        HeaderValue::from_static("application/json"),
-                    ));
+	info!("https://{address}:{port}");
 
-                    let body = json!({
-                        "message": "anything",
-                        "request":  format!("{req:?}"),
-                    });
+	Server::build()
+		.bind(appname, (address, port), || {
+			HttpService::build()
+				.client_request_timeout(Duration::from_secs(1000))
+				.finish(|req: Request| async move {
+					let content_type =
+						("content-type", HeaderValue::from_static("application/json"));
 
-                    ok::<_, Error>(res.body(body.to_string()))
-                })
-                .rustls_0_23(rustls_config())
-        })?
-        .run()
-        .await
+					let body: String;
+					let status_code: StatusCode;
+
+					loop {
+						if req.method() != Method::POST {
+							status_code = StatusCode::BAD_REQUEST;
+							body = json!({
+								"message": "Invalid request.",
+							})
+							.to_string();
+							break;
+						}
+
+						status_code = StatusCode::OK;
+
+						// body = crate::restparted::parted::models::request::Request::from_json(serde_json::from_str(req.payload()));
+						let (_, mut g) = req.into_parts();
+						let mut buf = Vec::new();
+						while let Some(Ok(chunk)) = g.next().await {
+							buf.extend_from_slice(&chunk);
+						}
+
+						body = crate::restparted::parted::models::request::Request::from_json(
+							serde_json::from_str(std::str::from_utf8(&buf).unwrap()).unwrap(),
+						)
+						.unwrap()
+						.to_string();
+						break;
+					}
+
+					let mut res: ResponseBuilder = Response::build(status_code);
+					res.insert_header(content_type);
+					Ok::<_, Error>(res.body(body))
+				})
+				.rustls_0_23(tls_config())
+		})?
+		.workers(4)
+		.run()
+		.await
 }
 
-fn rustls_config() -> ServerConfig {
-    let rcgen::CertifiedKey { cert, key_pair } =
-        rcgen::generate_simple_self_signed(["localhost".to_owned()]).unwrap();
-    let cert_file = cert.pem();
-    let key_file = key_pair.serialize_pem();
+fn tls_config() -> ServerConfig {
+	let rcgen::CertifiedKey { cert, key_pair } =
+		rcgen::generate_simple_self_signed(["localhost".to_owned()]).unwrap();
+	let cert_file = cert.pem();
+	let key_file = key_pair.serialize_pem();
 
-    let cert_file = &mut io::BufReader::new(cert_file.as_bytes());
-    let key_file = &mut io::BufReader::new(key_file.as_bytes());
+	let cert_file = &mut io::BufReader::new(cert_file.as_bytes());
+	let key_file = &mut io::BufReader::new(key_file.as_bytes());
 
-    let cert_chain = rustls_pemfile::certs(cert_file)
-        .collect::<Result<Vec<_>, _>>()
-        .unwrap();
-    let mut keys = rustls_pemfile::pkcs8_private_keys(key_file)
-        .collect::<Result<Vec<_>, _>>()
-        .unwrap();
+	let cert_chain = rustls_pemfile::certs(cert_file)
+		.collect::<Result<Vec<_>, _>>()
+		.unwrap();
+	let mut keys = rustls_pemfile::pkcs8_private_keys(key_file)
+		.collect::<Result<Vec<_>, _>>()
+		.unwrap();
 
-    let mut config = rustls::ServerConfig::builder()
-        .with_no_client_auth()
-        .with_single_cert(
-            cert_chain,
-            rustls::pki_types::PrivateKeyDer::Pkcs8(keys.remove(0)),
-        )
-        .unwrap();
+	let mut config = rustls::ServerConfig::builder()
+		.with_no_client_auth()
+		.with_single_cert(
+			cert_chain,
+			rustls::pki_types::PrivateKeyDer::Pkcs8(keys.remove(0)),
+		)
+		.unwrap();
 
-    const H1_ALPN: &[u8] = b"http/1.1";
-    const H2_ALPN: &[u8] = b"h2";
+	const H1_ALPN: &[u8] = b"http/1.1";
+	const H2_ALPN: &[u8] = b"h2";
 
-    config.alpn_protocols.push(H2_ALPN.to_vec());
-    config.alpn_protocols.push(H1_ALPN.to_vec());
+	config.alpn_protocols.push(H2_ALPN.to_vec());
+	config.alpn_protocols.push(H1_ALPN.to_vec());
 
-    config
+	config
 }
 
 // async fn load_body<S>(stream: S) -> Result<BytesMut, PayloadError>
@@ -111,61 +131,61 @@ fn rustls_config() -> ServerConfig {
 //     Ok(buf)
 // }
 
-fn tls_config() -> ServerConfig {
-    let rcgen::CertifiedKey { cert, key_pair } =
-        rcgen::generate_simple_self_signed(["localhost".to_owned()]).unwrap();
-    let cert_file = cert.pem();
-    let key_file = key_pair.serialize_pem();
+// fn tls_config() -> ServerConfig {
+//     let rcgen::CertifiedKey { cert, key_pair } =
+//         rcgen::generate_simple_self_signed(["localhost".to_owned()]).unwrap();
+//     let cert_file = cert.pem();
+//     let key_file = key_pair.serialize_pem();
 
-    let cert_file = &mut BufReader::new(cert_file.as_bytes());
-    let key_file = &mut BufReader::new(key_file.as_bytes());
+//     let cert_file = &mut BufReader::new(cert_file.as_bytes());
+//     let key_file = &mut BufReader::new(key_file.as_bytes());
 
-    let cert_chain = certs(cert_file).collect::<Result<Vec<_>, _>>().unwrap();
-    let mut keys = pkcs8_private_keys(key_file)
-        .collect::<Result<Vec<_>, _>>()
-        .unwrap();
+//     let cert_chain = certs(cert_file).collect::<Result<Vec<_>, _>>().unwrap();
+//     let mut keys = pkcs8_private_keys(key_file)
+//         .collect::<Result<Vec<_>, _>>()
+//         .unwrap();
 
-    let mut config = ServerConfig::builder()
-        .with_no_client_auth()
-        .with_single_cert(
-            cert_chain,
-            rustls::pki_types::PrivateKeyDer::Pkcs8(keys.remove(0)),
-        )
-        .unwrap();
+//     let mut config = ServerConfig::builder()
+//         .with_no_client_auth()
+//         .with_single_cert(
+//             cert_chain,
+//             rustls::pki_types::PrivateKeyDer::Pkcs8(keys.remove(0)),
+//         )
+//         .unwrap();
 
-    const H1_ALPN: &[u8] = b"http/1.1";
-    const H2_ALPN: &[u8] = b"h2";
+//     const H1_ALPN: &[u8] = b"http/1.1";
+//     const H2_ALPN: &[u8] = b"h2";
 
-    config.alpn_protocols.push(H2_ALPN.to_vec());
-    config.alpn_protocols.push(H1_ALPN.to_vec());
+//     config.alpn_protocols.push(H2_ALPN.to_vec());
+//     config.alpn_protocols.push(H1_ALPN.to_vec());
 
-    config
-}
+//     config
+// }
 
-pub fn get_negotiated_alpn_protocol(
-    addr: SocketAddr,
-    client_alpn_protocol: &[u8],
-) -> Option<Vec<u8>> {
-    let mut config = rustls::ClientConfig::builder()
-        .with_root_certificates(webpki_roots_cert_store())
-        .with_no_client_auth();
+// pub fn get_negotiated_alpn_protocol(
+//     addr: SocketAddr,
+//     client_alpn_protocol: &[u8],
+// ) -> Option<Vec<u8>> {
+//     let mut config = rustls::ClientConfig::builder()
+//         .with_root_certificates(webpki_roots_cert_store())
+//         .with_no_client_auth();
 
-    config.alpn_protocols.push(client_alpn_protocol.to_vec());
+//     config.alpn_protocols.push(client_alpn_protocol.to_vec());
 
-    let mut sess =
-        rustls::ClientConnection::new(Arc::new(config), ServerName::try_from("localhost").unwrap())
-            .unwrap();
+//     let mut sess =
+//         rustls::ClientConnection::new(Arc::new(config), ServerName::try_from("localhost").unwrap())
+//             .unwrap();
 
-    let mut sock = StdTcpStream::connect(addr).unwrap();
-    let mut stream = rustls::Stream::new(&mut sess, &mut sock);
+//     let mut sock = StdTcpStream::connect(addr).unwrap();
+//     let mut stream = rustls::Stream::new(&mut sess, &mut sock);
 
-    // The handshake will fails because the client will not be able to verify the server
-    // certificate, but it doesn't matter here as we are just interested in the negotiated ALPN
-    // protocol
-    let _ = stream.flush();
+//     // The handshake will fails because the client will not be able to verify the server
+//     // certificate, but it doesn't matter here as we are just interested in the negotiated ALPN
+//     // protocol
+//     let _ = stream.flush();
 
-    sess.alpn_protocol().map(|proto| proto.to_vec())
-}
+//     sess.alpn_protocol().map(|proto| proto.to_vec())
+// }
 
 // #[actix_rt::test]
 // async fn h1() -> io::Result<()> {

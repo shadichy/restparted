@@ -62,9 +62,7 @@ impl Request {
 
 	pub fn to_shell_cmd(&self) -> Vec<String> {
 		let mut cmd = vec![
-			String::from("parted"),
 			self.device.path.clone(),
-			String::from("--json"),
 			self.command.get_real_cmd(),
 		];
 		cmd.extend(self.arguments.clone());

@@ -1,19 +1,15 @@
 mod restparted;
 
-use crate::restparted::{
-	model::base::Deserializable, parted::models::request::Request as PartedRequest,
-};
-
 use actix_http::{
-	body, header::HeaderValue, Error, HttpService, Method, Request, Response, ResponseBuilder,
+	header::HeaderValue, Error, HttpService, Method, Request, Response, ResponseBuilder,
 	StatusCode,
 };
 use actix_server::Server;
 use futures_util::StreamExt;
+use restparted::parted::command::run_command;
 use rustls::ServerConfig;
-use serde_json::json;
+use serde_json::{json, Value};
 use std::{io, str, time::Duration};
-use tracing::info;
 
 #[actix_rt::main]
 async fn main() -> io::Result<()> {
@@ -38,7 +34,7 @@ async fn main() -> io::Result<()> {
 					let content_type =
 						("content-type", HeaderValue::from_static("application/json"));
 
-					let body: String;
+					let body: Value;
 					let status_code: StatusCode;
 
 					loop {
@@ -46,8 +42,7 @@ async fn main() -> io::Result<()> {
 							status_code = StatusCode::BAD_REQUEST;
 							body = json!({
 								"message": "Invalid request.",
-							})
-							.to_string();
+							});
 							break;
 						}
 
@@ -62,34 +57,28 @@ async fn main() -> io::Result<()> {
 							status_code = StatusCode::NOT_ACCEPTABLE;
 							body = json!({
 								"message": "Invalid payload.",
-							})
-							.to_string();
+							});
 							break;
 						}
 
-						let parted_request = PartedRequest::from_json(body_json.unwrap());
-						if parted_request.is_err() {
+						let cmd_output = run_command(body_json.unwrap());
+						if cmd_output.is_err() {
 							status_code = StatusCode::INTERNAL_SERVER_ERROR;
 							body = json!({
 								"message": "Invalid command",
-								"error": parted_request.err().unwrap().to_string(),
-							})
-							.to_string();
+								"error": cmd_output.err().unwrap().to_string(),
+							});
 							break;
 						}
 
 						status_code = StatusCode::OK;
-						body = json!({
-							"message": "Success",
-							"response": parted_request.unwrap().to_string(),
-						})
-						.to_string();
+						body = cmd_output.unwrap();
 						break;
 					}
 
 					let mut res: ResponseBuilder = Response::build(status_code);
 					res.insert_header(content_type);
-					Ok::<_, Error>(res.body(body))
+					Ok::<_, Error>(res.body(body.to_string()))
 				})
 				.rustls_0_23(tls_config())
 		})?

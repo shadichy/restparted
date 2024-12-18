@@ -48,13 +48,11 @@ pub trait Deserializable: Sized {
 	}
 }
 
-pub struct UUID {
-	pub value: String,
-}
+pub struct UUID(String);
 
 impl ToString for UUID {
 	fn to_string(&self) -> String {
-		self.value.clone()
+		self.0.clone()
 	}
 }
 
@@ -63,14 +61,18 @@ impl TryFrom<&str> for UUID {
 
 	fn try_from(value: &str) -> Result<Self, Self::Error> {
 		if value.len() == 32 {
-			// Ok(UUID {
-			//   value: String::from(value),
-			// });
-			todo!()
-		} else if value.len() == 35 && Regex::new(r"-")?.find_iter(value).count() == 3 {
-			Ok(UUID {
-				value: String::from(value),
-			})
+      let mut str = String::from(&value[..8]);
+      str+="-";
+      str+=&value[8..12];
+      str+="-";
+      str+=&value[12..16];
+      str+="-";
+      str+=&value[16..20];
+      str+="-";
+      str+=&value[20..];
+			Ok(UUID(str))
+		} else if value.len() == 36 && Regex::new(r"-")?.find_iter(value).count() == 4 {
+			Ok(UUID(String::from(value)))
 		} else {
 			Err(Box::new(RawError::new(value, "Invalid UUID")))
 		}
@@ -89,6 +91,7 @@ impl TryFrom<u128> for UUID {
 	type Error = Box<dyn Error>;
 
 	fn try_from(value: u128) -> Result<Self, Self::Error> {
+    // format!("{value:x}");
 		todo!()
 	}
 }
@@ -103,7 +106,7 @@ impl TryFrom<i128> for UUID {
 
 impl PartialEq for UUID {
 	fn eq(&self, other: &Self) -> bool {
-		self.value == other.value
+		self.0 == other.0
 	}
 }
 

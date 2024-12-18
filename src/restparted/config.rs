@@ -41,20 +41,40 @@ impl Config {
 		for path in Self::CONFIG_PATHS {
 			let filepath_str = format!("{}/{}", path, Self::FILENAME);
 			info!("Scanning {filepath_str}...");
+
 			let filepath = Path::new(&filepath_str);
 			if !filepath.exists() {
 				continue;
 			}
-			let data: Value = from_str(&read_to_string(filepath).unwrap()).unwrap();
+
+			let file_content = read_to_string(filepath);
+			if file_content.is_err() {
+				continue;
+			}
+
+			let data_result = from_str(&file_content.unwrap());
+			if data_result.is_err() {
+				continue;
+			}
+
+			let data: Value = data_result.unwrap();
+
 			if data["address"].is_string() {
 				self.address = data["address"].as_str().unwrap().to_string();
 			}
+			
 			if data["port"].is_u64() {
 				self.port = data["port"].as_u64().unwrap() as u16;
 			}
+			
 			if data["fallback_device"].is_string() {
 				self.fallback_device = data["fallback_device"].as_str().unwrap().to_string();
 			}
+			
+			if data["max_worker"].is_u64() {
+				self.max_worker = data["max_worker"].as_u64().unwrap() as usize;
+			}
+			
 			break;
 		}
 		self.clone()

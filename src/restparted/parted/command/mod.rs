@@ -1,22 +1,25 @@
-use std::{error::Error, process::Command};
+use std::{process::Command, sync::Mutex};
 
 use serde_json::Value;
 
-use crate::restparted::{
-	model::base::{Deserializable, Serializable},
-	parted::models::{
-		request::Request,
-		response::Response,
-	},
-};
+use crate::restparted::{model::base::serialize::Serializable, parted::models::{request::Request, response::Response}, CONFIG};
 
-pub fn run_command(input: Value) -> Result<Value, Box<dyn Error>> {
-	Ok(Response::from(
+static PARTED_CMD: Mutex<String> = Mutex::new(String::new());
+
+pub fn initialize() {
+	*PARTED_CMD.lock().unwrap() = CONFIG.lock().unwrap().parted_executable.clone();
+}
+
+pub fn parted_cmd(args: Vec<String>) -> Response {
+	Response::from(
 		Command::new("pkexec")
-      .arg("parted")
+			.arg(PARTED_CMD.lock().unwrap().as_str())
 			.arg("--json")
-			.args(Request::from_json(input)?.to_shell_cmd())
+			.args(args)
 			.output(),
 	)
-	.to_json())
+}
+
+pub fn run_query(query: Value) -> Value {
+	Request::run(query).to_json()
 }

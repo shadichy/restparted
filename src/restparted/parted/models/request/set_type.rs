@@ -1,15 +1,16 @@
-use std::error::Error;
-
 use crate::restparted::{
-	model::base::{Deserializable, RawError},
+	model::{base::serialize::Deserializable, errors::{invalid_json::InvalidJSONError, RawError, ToRawError}},
 	parted::{
-		models::{commands::Command, device::Device},
+		models::{
+			commands::Command,
+			device::Device,
+			request::{Request, Runable},
+		},
 		system::device::partition_id::PartitionID,
 	},
 };
 
-use super::Request;
-
+#[derive(Clone, Debug)]
 pub struct SetTypeRequest {
 	pub device: Device,
 	pub partition_number: u64,
@@ -27,7 +28,7 @@ impl From<SetTypeRequest> for Request {
 }
 
 impl Deserializable for SetTypeRequest {
-	type Error = Box<dyn Error>;
+	type Error = RawError;
 
 	fn from_json(data: serde_json::Value) -> Result<Self, Self::Error> {
 		let data_device = &data["device"];
@@ -35,32 +36,23 @@ impl Deserializable for SetTypeRequest {
 		let data_type_id = &data["id"];
 
 		if !data_device.is_string() {
-			return Err(Box::new(RawError::new(
-				&data_device.to_string(),
-				"Property does not match type",
-			)));
+			return Err(InvalidJSONError::new(&data_device.to_string()));
 		}
 
 		if !data_partition_number.is_u64() {
-			return Err(Box::new(RawError::new(
-				&data_partition_number.to_string(),
-				"Property does not match type",
-			)));
+			return Err(InvalidJSONError::new(&data_partition_number.to_string()));
 		}
 
 		if !data_type_id.is_i64() && !data_type_id.is_string() {
-			return Err(Box::new(RawError::new(
-				&data_type_id.to_string(),
-				"Property does not match type",
-			)));
+			return Err(InvalidJSONError::new(&data_type_id.to_string()));
 		}
 
-    let type_id: PartitionID;
-    if data_type_id.is_string() {
-      type_id = PartitionID::try_from(data_type_id.as_str().unwrap())?
-    } else {
-      type_id = PartitionID::try_from(data_type_id.as_u64().unwrap() as u8)?
-    }
+		let type_id: PartitionID;
+		if data_type_id.is_string() {
+			type_id = PartitionID::try_from(data_type_id.as_str().unwrap())?
+		} else {
+			type_id = PartitionID::try_from(data_type_id.as_u64().unwrap() as u8)?
+		}
 		Ok(SetTypeRequest {
 			device: Device::try_from(data_device.as_str().unwrap())?,
 			partition_number: data_partition_number.as_u64().unwrap() as u64,
@@ -68,3 +60,5 @@ impl Deserializable for SetTypeRequest {
 		})
 	}
 }
+
+impl Runable for SetTypeRequest {}

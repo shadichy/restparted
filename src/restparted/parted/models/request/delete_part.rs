@@ -1,12 +1,16 @@
-use std::error::Error;
-
 use crate::restparted::{
-	model::base::{Deserializable, RawError},
-	parted::models::{commands::Command, device::Device},
+	model::{
+		base::serialize::Deserializable,
+		errors::{invalid_json::InvalidJSONError, RawError, ToRawError},
+	},
+	parted::models::{
+		commands::Command,
+		device::Device,
+		request::{Request, Runable},
+	},
 };
 
-use super::Request;
-
+#[derive(Clone, Debug)]
 pub struct DeletePartRequest {
 	pub device: Device,
 	pub partition_number: u16,
@@ -23,24 +27,18 @@ impl From<DeletePartRequest> for Request {
 }
 
 impl Deserializable for DeletePartRequest {
-	type Error = Box<dyn Error>;
+	type Error = RawError;
 
 	fn from_json(data: serde_json::Value) -> Result<Self, Self::Error> {
 		let data_device = &data["device"];
 		let data_partition_number = &data["number"];
 
 		if !data_device.is_string() {
-			return Err(Box::new(RawError::new(
-				&data_device.to_string(),
-				"Property does not match type",
-			)));
+			return Err(InvalidJSONError::new(&data_device.to_string()));
 		}
 
 		if !data_partition_number.is_u64() {
-			return Err(Box::new(RawError::new(
-				&data_partition_number.to_string(),
-				"Property does not match type",
-			)));
+			return Err(InvalidJSONError::new(&data_partition_number.to_string()));
 		}
 
 		Ok(DeletePartRequest {
@@ -49,3 +47,4 @@ impl Deserializable for DeletePartRequest {
 		})
 	}
 }
+impl Runable for DeletePartRequest {}

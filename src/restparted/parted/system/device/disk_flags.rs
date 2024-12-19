@@ -1,9 +1,9 @@
-use std::error::Error;
-
-use crate::restparted::model::base::RawError;
+use crate::restparted::model::errors::{
+	enum_conversion::EnumConversionError, RawError, ToRawError,
+};
 
 #[allow(non_camel_case_types)]
-#[derive(PartialEq, Eq)]
+#[derive(PartialEq, Eq, Clone, Debug)]
 pub enum DiskFlag {
 	CYLINDER_ALIGNMENT = 0,
 	PMBR_BOOT = 1,
@@ -23,21 +23,20 @@ impl ToString for DiskFlag {
 	}
 }
 
-
 impl TryFrom<&str> for DiskFlag {
-	type Error = Box<dyn Error>;
+	type Error = RawError;
 
 	fn try_from(value: &str) -> Result<Self, Self::Error> {
 		match value {
 			Self::STR_CYLINDER_ALIGNMENT => Ok(Self::CYLINDER_ALIGNMENT),
 			Self::STR_PMBR_BOOT => Ok(Self::PMBR_BOOT),
-			_ => Err(Box::new(RawError::new(value, "Cannot convert"))),
+			_ => Err(EnumConversionError::new(value)),
 		}
 	}
 }
 
 impl TryFrom<String> for DiskFlag {
-	type Error = Box<dyn Error>;
+	type Error = RawError;
 
 	fn try_from(value: String) -> Result<Self, Self::Error> {
 		Self::try_from(value.as_str())

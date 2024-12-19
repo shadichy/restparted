@@ -1,15 +1,16 @@
-use std::error::Error;
-
 use crate::restparted::{
-	model::base::{Deserializable, RawError},
+	model::{
+		base::serialize::Deserializable,
+		errors::{invalid_json::InvalidJSONError, RawError, ToRawError},
+	},
 	parted::{
-		models::{commands::Command, device::Device},
+		command::parted_cmd,
+		models::{commands::Command, device::Device, response::Response,request::{Request, Runable}},
 		system::{device::partition_types::PartitionType, filesystem::FileSystem},
 	},
 };
 
-use super::Request;
-
+#[derive(Clone, Debug)]
 pub struct CreatePartRequest {
 	pub device: Device,
 	pub part_type: Option<PartitionType>,
@@ -44,7 +45,7 @@ impl From<CreatePartRequest> for Request {
 }
 
 impl Deserializable for CreatePartRequest {
-	type Error = Box<dyn Error>;
+	type Error = RawError;
 
 	fn from_json(data: serde_json::Value) -> Result<Self, Self::Error> {
 		let data_device = &data["device"];
@@ -55,24 +56,15 @@ impl Deserializable for CreatePartRequest {
 		let data_end = &data["end"];
 
 		if !data_device.is_string() {
-			return Err(Box::new(RawError::new(
-				&data_device.to_string(),
-				"Property does not match type",
-			)));
+			return Err(InvalidJSONError::new(&data_device.to_string()));
 		}
 
 		if !data_start.is_f64() {
-			return Err(Box::new(RawError::new(
-				&data_start.to_string(),
-				"Property does not match type",
-			)));
+			return Err(InvalidJSONError::new(&data_start.to_string()));
 		}
 
 		if !data_end.is_f64() {
-			return Err(Box::new(RawError::new(
-				&data_end.to_string(),
-				"Property does not match type",
-			)));
+			return Err(InvalidJSONError::new(&data_end.to_string()));
 		}
 
 		let part_type: Option<PartitionType>;
@@ -104,5 +96,12 @@ impl Deserializable for CreatePartRequest {
 			start: data_start.as_f64().unwrap(),
 			end: data_end.as_f64().unwrap(),
 		})
+	}
+}
+
+impl Runable for CreatePartRequest {
+	fn run(&self) -> Response {
+		parted_cmd(Request::from(self.clone()).to_shell_cmd());
+		todo!("Create part with fs")
 	}
 }

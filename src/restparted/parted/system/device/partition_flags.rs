@@ -1,9 +1,7 @@
-use std::error::Error;
-
-use crate::restparted::model::base::RawError;
+use crate::restparted::model::errors::{enum_conversion::EnumConversionError, RawError, ToRawError};
 
 #[allow(non_camel_case_types)]
-#[derive(PartialEq, Eq)]
+#[derive(PartialEq, Eq, Clone, Debug)]
 pub enum PartitionFlag {
 	BOOT = 0,
 	ROOT = 1,
@@ -84,7 +82,7 @@ impl ToString for PartitionFlag {
 }
 
 impl TryFrom<&str> for PartitionFlag {
-	type Error = Box<dyn Error>;
+	type Error = RawError;
 
 	fn try_from(value: &str) -> Result<Self, Self::Error> {
 		match value {
@@ -110,13 +108,13 @@ impl TryFrom<&str> for PartitionFlag {
 			Self::STR_BLS_BOOT => Ok(Self::BLS_BOOT),
 			Self::STR_LINUX_HOME => Ok(Self::LINUX_HOME),
 			Self::STR_NO_AUTOMOUNT => Ok(Self::NO_AUTOMOUNT),
-			_ => Err(Box::new(RawError::new(value, "Cannot convert"))),
+			_ => Err(EnumConversionError::new(value)),
 		}
 	}
 }
 
 impl TryFrom<String> for PartitionFlag {
-	type Error = Box<dyn Error>;
+	type Error = RawError;
 
 	fn try_from(value: String) -> Result<Self, Self::Error> {
 		Self::try_from(value.as_str())

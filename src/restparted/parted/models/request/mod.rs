@@ -1,4 +1,4 @@
-use std::error::Error;
+use std::{error::Error, fmt::Debug};
 
 use align_check::AlignCheckRequest;
 use create_part::CreatePartRequest;
@@ -9,6 +9,7 @@ use name::NameRequest;
 use print::PrintRequest;
 use rescue::RescueRequest;
 use resize_part::ResizePartRequest;
+use serde_json::Value;
 use set_flag::SetFlagRequest;
 use set_part_flag::SetPartFlagRequest;
 use set_type::SetTypeRequest;
@@ -17,9 +18,17 @@ use toggle_part_flag::TogglePartFlagRequest;
 use version::VersionRequest;
 
 use crate::restparted::{
-	model::base::{Deserializable, RawError},
-	parted::models::{commands::Command, device::Device},
+	model::{
+		base::serialize::Deserializable,
+		errors::{invalid_json::InvalidJSONError, ToRawError},
+	},
+	parted::{
+		command::parted_cmd,
+		models::{commands::Command, device::Device},
+	},
 };
+
+use super::response::Response;
 
 mod align_check;
 mod create_part;
@@ -61,12 +70,43 @@ impl Request {
 	}
 
 	pub fn to_shell_cmd(&self) -> Vec<String> {
-		let mut cmd = vec![
-			self.device.path.clone(),
-			self.command.get_real_cmd(),
-		];
+		let mut cmd = vec![self.device.to_string(), self.command.get_real_cmd()];
 		cmd.extend(self.arguments.clone());
 		cmd
+	}
+
+	fn try_run<T: Runable, E: Error>(runner: Result<T, E>) -> Response {
+		if runner.is_err() {
+			Response::from(runner.unwrap_err().to_string().as_str())
+		} else {
+			runner.unwrap().run()
+		}
+	}
+
+	pub fn run(data: Value) -> Response {
+		let data_command = &data["command"];
+
+		if !data_command.is_string() {
+			return Response::new_error(InvalidJSONError::new(&data_command.to_string()));
+		}
+
+		match Command::from(data_command.as_str().unwrap()) {
+			Command::Version => Self::try_run(VersionRequest::from_json(data.clone())),
+			Command::Print => Self::try_run(PrintRequest::from_json(data.clone())),
+			Command::AlignCheck => Self::try_run(AlignCheckRequest::from_json(data.clone())),
+			Command::Name => Self::try_run(NameRequest::from_json(data.clone())),
+			Command::CreateTable => Self::try_run(CreateTableRequest::from_json(data.clone())),
+			Command::CreatePart => Self::try_run(CreatePartRequest::from_json(data.clone())),
+			Command::Rescue => Self::try_run(RescueRequest::from_json(data.clone())),
+			Command::ResizePart => Self::try_run(ResizePartRequest::from_json(data.clone())),
+			Command::DeletePart => Self::try_run(DeletePartRequest::from_json(data.clone())),
+			Command::SetFlag => Self::try_run(SetFlagRequest::from_json(data.clone())),
+			Command::SetPartFlag => Self::try_run(SetPartFlagRequest::from_json(data.clone())),
+			Command::ToggleFlag => Self::try_run(ToggleFlagRequest::from_json(data.clone())),
+			Command::TogglePartFlag => Self::try_run(TogglePartFlagRequest::from_json(data.clone())),
+			Command::SetType => Self::try_run(SetTypeRequest::from_json(data.clone())),
+			Command::Help => Self::try_run(HelpRequest::from_json(data.clone())),
+		}
 	}
 }
 
@@ -76,35 +116,8 @@ impl ToString for Request {
 	}
 }
 
-impl Deserializable for Request {
-	type Error = Box<dyn Error>;
-
-	fn from_json(data: serde_json::Value) -> Result<Self, Self::Error> {
-		let data_command = &data["command"];
-
-		if !data_command.is_string() {
-			return Err(Box::new(RawError::new(
-				&data_command.to_string(),
-				"Property does not match type",
-			)));
-		}
-
-		Ok(match Command::from(data_command.as_str().unwrap()) {
-			Command::Version => Self::from(VersionRequest::from_json(data.clone())?),
-			Command::Print => Self::from(PrintRequest::from_json(data.clone())?),
-			Command::AlignCheck => Self::from(AlignCheckRequest::from_json(data.clone())?),
-			Command::Name => Self::from(NameRequest::from_json(data.clone())?),
-			Command::CreateTable => Self::from(CreateTableRequest::from_json(data.clone())?),
-			Command::CreatePart => Self::from(CreatePartRequest::from_json(data.clone())?),
-			Command::Rescue => Self::from(RescueRequest::from_json(data.clone())?),
-			Command::ResizePart => Self::from(ResizePartRequest::from_json(data.clone())?),
-			Command::DeletePart => Self::from(DeletePartRequest::from_json(data.clone())?),
-			Command::SetFlag => Self::from(SetFlagRequest::from_json(data.clone())?),
-			Command::SetPartFlag => Self::from(SetPartFlagRequest::from_json(data.clone())?),
-			Command::ToggleFlag => Self::from(ToggleFlagRequest::from_json(data.clone())?),
-			Command::TogglePartFlag => Self::from(TogglePartFlagRequest::from_json(data.clone())?),
-			Command::SetType => Self::from(SetTypeRequest::from_json(data.clone())?),
-			Command::Help => Self::from(HelpRequest::from_json(data.clone())?),
-		})
+pub trait Runable : Debug + Clone + Into<Request>{
+	fn run(&self) -> Response {
+		parted_cmd(Into::<Request>::into((*self).clone()).to_shell_cmd())
 	}
 }

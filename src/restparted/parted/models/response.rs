@@ -1,10 +1,20 @@
-use std::{io, process::Output};
+use std::{error::Error, io, process::Output};
 
 use serde_json::{from_str, json, Value};
 
-use crate::restparted::model::base::Serializable;
+use crate::restparted::model::base::serialize::Serializable;
 
 pub struct Response(Value);
+
+impl Response {
+	pub fn new(value: Value) -> Response {
+		Self(value)
+	}
+
+	pub fn new_error<E: Error>(value: E) -> Response {
+		Self::from(value.to_string())
+	}
+}
 
 impl Serializable for Response {
 	fn to_json(&self) -> Value {
@@ -26,10 +36,19 @@ impl From<io::Result<Output>> for Response {
 		let message: Value;
 
 		if output.starts_with("{") || output.starts_with("[") {
-			let message_parse = from_str(&output);
+			let message_parse = from_str(
+				&(("[".to_owned()
+					+ &output
+						.replace("\n\n", ",")
+						.replace("\n", "")
+						.replace(" ", "") + "]")
+					.replace(",}", "}")
+					.replace(",]", "]")),
+			);
 			if message_parse.is_ok() {
 				message = message_parse.unwrap();
 			} else {
+				tracing::info!("\n{}", message_parse.unwrap_err());
 				message = Value::String(output);
 			}
 		} else {
@@ -41,5 +60,17 @@ impl From<io::Result<Output>> for Response {
 		  "message": message,
 		  "warning": String::from_utf8(data.stderr).unwrap(),
 		}))
+	}
+}
+
+impl From<&str> for Response {
+	fn from(item: &str) -> Self {
+		Response(json!({"message": &item}))
+	}
+}
+
+impl From<String> for Response {
+	fn from(item: String) -> Self {
+		Response::from(item.as_str())
 	}
 }

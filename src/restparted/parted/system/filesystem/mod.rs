@@ -1,11 +1,9 @@
-use std::error::Error;
-
-use crate::restparted::model::base::RawError;
+use crate::restparted::model::errors::{enum_conversion::EnumConversionError, RawError, ToRawError};
 
 pub mod create_filesystem;
 
 #[allow(non_camel_case_types)]
-#[derive(PartialEq, Eq)]
+#[derive(PartialEq, Eq, Clone, Debug)]
 pub enum FileSystem {
 	AFFS0 = 0,
 	AFFS1 = 1,
@@ -145,7 +143,7 @@ impl ToString for FileSystem {
 }
 
 impl TryFrom<&str> for FileSystem {
-	type Error = Box<dyn Error>;
+	type Error = RawError;
 
 	fn try_from(value: &str) -> Result<Self, Self::Error> {
 		match value {
@@ -191,13 +189,13 @@ impl TryFrom<&str> for FileSystem {
 			Self::STR_SWSUSP => Ok(Self::SWSUSP),
 			Self::STR_UDF => Ok(Self::UDF),
 			Self::STR_XFS => Ok(Self::XFS),
-			_ => Err(Box::new(RawError::new(value,"Cannot convert"))),
+			_ => Err(EnumConversionError::new(value)),
 		}
 	}
 }
 
 impl TryFrom<String> for FileSystem {
-	type Error = Box<dyn Error>;
+	type Error = RawError;
 
 	fn try_from(value: String) -> Result<Self, Self::Error> {
 		Self::try_from(value.as_str())

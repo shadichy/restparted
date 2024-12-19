@@ -1,15 +1,19 @@
-use std::error::Error;
-
 use crate::restparted::{
-	model::base::{Deserializable, RawError},
+	model::{
+		base::serialize::Deserializable,
+		errors::{invalid_json::InvalidJSONError, RawError, ToRawError},
+	},
 	parted::{
-		models::{commands::Command, device::Device},
+		models::{
+			commands::Command,
+			device::Device,
+			request::{Request, Runable},
+		},
 		system::device::partition_flags::PartitionFlag,
 	},
 };
 
-use super::Request;
-
+#[derive(Clone, Debug)]
 pub struct TogglePartFlagRequest {
 	pub device: Device,
 	pub partition_number: Option<u64>,
@@ -34,7 +38,7 @@ impl From<TogglePartFlagRequest> for Request {
 }
 
 impl Deserializable for TogglePartFlagRequest {
-	type Error = Box<dyn Error>;
+	type Error = RawError;
 
 	fn from_json(data: serde_json::Value) -> Result<Self, Self::Error> {
 		let data_device = &data["device"];
@@ -42,10 +46,7 @@ impl Deserializable for TogglePartFlagRequest {
 		let data_flag = &data["flag"];
 
 		if !data_device.is_string() {
-			return Err(Box::new(RawError::new(
-				&data_device.to_string(),
-				"Property does not match type",
-			)));
+			return Err(InvalidJSONError::new(&data_device.to_string()));
 		}
 
 		let flag: Option<PartitionFlag>;
@@ -61,3 +62,5 @@ impl Deserializable for TogglePartFlagRequest {
 		})
 	}
 }
+
+impl Runable for TogglePartFlagRequest {}

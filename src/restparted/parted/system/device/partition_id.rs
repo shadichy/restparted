@@ -1,8 +1,6 @@
-use std::error::Error;
+use crate::restparted::model::{base::uuid::UUID, errors::RawError};
 
-use crate::restparted::model::base::UUID;
-
-#[derive(PartialEq, Eq)]
+#[derive(PartialEq, Eq, Clone, Debug)]
 pub enum PartitionID {
 	ID(u8),
 	UUID(UUID),
@@ -18,7 +16,7 @@ impl ToString for PartitionID {
 }
 
 impl TryFrom<u8> for PartitionID {
-	type Error = Box<dyn Error>;
+	type Error = RawError;
 
 	fn try_from(value: u8) -> Result<Self, Self::Error> {
 		Ok(PartitionID::ID(value))
@@ -26,7 +24,7 @@ impl TryFrom<u8> for PartitionID {
 }
 
 impl TryFrom<i8> for PartitionID {
-	type Error = Box<dyn Error>;
+	type Error = RawError;
 
 	fn try_from(value: i8) -> Result<Self, Self::Error> {
 		Ok(PartitionID::ID(value as u8))
@@ -34,7 +32,7 @@ impl TryFrom<i8> for PartitionID {
 }
 
 impl TryFrom<&str> for PartitionID {
-	type Error = Box<dyn Error>;
+	type Error = RawError;
 
 	fn try_from(value: &str) -> Result<Self, Self::Error> {
 		Ok(if value.len() <= 3 || (value.len() == 4 && value.starts_with("0x")) {
@@ -46,7 +44,7 @@ impl TryFrom<&str> for PartitionID {
 }
 
 impl TryFrom<String> for PartitionID {
-	type Error = Box<dyn Error>;
+	type Error = RawError;
 
 	fn try_from(value: String) -> Result<Self, Self::Error> {
 		PartitionID::try_from(value.as_str())
@@ -54,7 +52,7 @@ impl TryFrom<String> for PartitionID {
 }
 
 impl TryFrom<u128> for PartitionID {
-	type Error = Box<dyn Error>;
+	type Error = RawError;
 
 	fn try_from(value: u128) -> Result<Self, Self::Error> {
 		Ok(PartitionID::UUID(UUID::try_from(value)?))
@@ -62,7 +60,7 @@ impl TryFrom<u128> for PartitionID {
 }
 
 impl TryFrom<i128> for PartitionID {
-	type Error = Box<dyn Error>;
+	type Error = RawError;
 
 	fn try_from(value: i128) -> Result<Self, Self::Error> {
 		Ok(PartitionID::UUID(UUID::try_from(value)?))

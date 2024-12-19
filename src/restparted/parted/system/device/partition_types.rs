@@ -1,8 +1,6 @@
-use std::error::Error;
+use crate::restparted::model::errors::{enum_conversion::EnumConversionError, RawError, ToRawError};
 
-use crate::restparted::model::base::RawError;
-
-#[derive(PartialEq, Eq)]
+#[derive(PartialEq, Eq, Clone, Debug)]
 pub enum PartitionType {
 	PRIMARY = 0,
 	LOGICAL = 1,
@@ -26,20 +24,20 @@ impl ToString for PartitionType {
 }
 
 impl TryFrom<&str> for PartitionType {
-	type Error = Box<dyn Error>;
+	type Error = RawError;
 
 	fn try_from(value: &str) -> Result<Self, Self::Error> {
 		match value {
 			Self::STR_PRIMARY => Ok(Self::PRIMARY),
 			Self::STR_LOGICAL => Ok(Self::LOGICAL),
 			Self::STR_EXTENDED => Ok(Self::EXTENDED),
-			_ => Err(Box::new(RawError::new(value, "Cannot convert"))),
+			_ => Err(EnumConversionError::new(value)),
 		}
 	}
 }
 
 impl TryFrom<String> for PartitionType {
-	type Error = Box<dyn Error>;
+	type Error = RawError;
 
 	fn try_from(value: String) -> Result<Self, Self::Error> {
 		Self::try_from(value.as_str())

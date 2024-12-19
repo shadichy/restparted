@@ -1,15 +1,19 @@
-use std::error::Error;
-
 use crate::restparted::{
-	model::base::{Deserializable, RawError},
+	model::{
+		base::serialize::Deserializable,
+		errors::{invalid_json::InvalidJSONError, RawError, ToRawError},
+	},
 	parted::{
-		models::{commands::Command, device::Device},
+		models::{
+			commands::Command,
+			device::Device,
+			request::{Request, Runable},
+		},
 		system::device::{disk_flags::DiskFlag, flag_state::FlagState},
 	},
 };
 
-use super::Request;
-
+#[derive(Clone, Debug)]
 pub struct SetFlagRequest {
 	pub device: Device,
 	pub flag: DiskFlag,
@@ -27,7 +31,7 @@ impl From<SetFlagRequest> for Request {
 }
 
 impl Deserializable for SetFlagRequest {
-	type Error = Box<dyn Error>;
+	type Error = RawError;
 
 	fn from_json(data: serde_json::Value) -> Result<Self, Self::Error> {
 		let data_device = &data["device"];
@@ -35,24 +39,15 @@ impl Deserializable for SetFlagRequest {
 		let data_state = &data["state"];
 
 		if !data_device.is_string() {
-			return Err(Box::new(RawError::new(
-				&data_device.to_string(),
-				"Property does not match type",
-			)));
+			return Err(InvalidJSONError::new(&data_device.to_string()));
 		}
 
 		if !data_flag.is_string() {
-			return Err(Box::new(RawError::new(
-				&data_flag.to_string(),
-				"Property does not match type",
-			)));
+			return Err(InvalidJSONError::new(&data_flag.to_string()));
 		}
 
 		if !data_state.is_u64() && !data_state.is_string() {
-			return Err(Box::new(RawError::new(
-				&data_state.to_string(),
-				"Property does not match type",
-			)));
+			return Err(InvalidJSONError::new(&data_state.to_string()));
 		}
 
 		let state: FlagState;
@@ -68,3 +63,5 @@ impl Deserializable for SetFlagRequest {
 		})
 	}
 }
+
+impl Runable for SetFlagRequest {}

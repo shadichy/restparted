@@ -1,12 +1,16 @@
-use std::error::Error;
-
 use crate::restparted::{
-	model::base::{Deserializable, RawError},
-	parted::models::{commands::Command, device::Device},
+	model::{
+		base::serialize::Deserializable,
+		errors::{invalid_json::InvalidJSONError, RawError, ToRawError},
+	},
+	parted::models::{
+		commands::Command,
+		device::Device,
+		request::{Request, Runable},
+	},
 };
 
-use super::Request;
-
+#[derive(Clone, Debug)]
 pub struct RescueRequest {
 	pub device: Device,
 	pub start: f64,
@@ -24,7 +28,7 @@ impl From<RescueRequest> for Request {
 }
 
 impl Deserializable for RescueRequest {
-	type Error = Box<dyn Error>;
+	type Error = RawError;
 
 	fn from_json(data: serde_json::Value) -> Result<Self, Self::Error> {
 		let data_device = &data["device"];
@@ -32,24 +36,15 @@ impl Deserializable for RescueRequest {
 		let data_end = &data["end"];
 
 		if !data_device.is_string() {
-			return Err(Box::new(RawError::new(
-				&data_device.to_string(),
-				"Property does not match type",
-			)));
+			return Err(InvalidJSONError::new(&data_device.to_string()));
 		}
 
 		if !data_start.is_f64() {
-			return Err(Box::new(RawError::new(
-				&data_start.to_string(),
-				"Property does not match type",
-			)));
+			return Err(InvalidJSONError::new(&data_start.to_string()));
 		}
 
 		if !data_end.is_f64() {
-			return Err(Box::new(RawError::new(
-				&data_end.to_string(),
-				"Property does not match type",
-			)));
+			return Err(InvalidJSONError::new(&data_end.to_string()));
 		}
 
 		Ok(RescueRequest {
@@ -59,3 +54,5 @@ impl Deserializable for RescueRequest {
 		})
 	}
 }
+
+impl Runable for RescueRequest {}

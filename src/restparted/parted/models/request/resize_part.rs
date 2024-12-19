@@ -1,12 +1,13 @@
-use std::error::Error;
-
 use crate::restparted::{
-	model::base::{Deserializable, RawError},
-	parted::models::{commands::Command, device::Device},
+	model::{base::serialize::Deserializable, errors::{invalid_json::InvalidJSONError, RawError, ToRawError}},
+	parted::models::{
+		commands::Command,
+		device::Device,
+		request::{Request, Runable},
+	},
 };
 
-use super::Request;
-
+#[derive(Clone, Debug)]
 pub struct ResizePartRequest {
 	pub device: Device,
 	pub partition_number: u64,
@@ -24,7 +25,7 @@ impl From<ResizePartRequest> for Request {
 }
 
 impl Deserializable for ResizePartRequest {
-	type Error = Box<dyn Error>;
+	type Error = RawError;
 
 	fn from_json(data: serde_json::Value) -> Result<Self, Self::Error> {
 		let data_device = &data["device"];
@@ -32,24 +33,15 @@ impl Deserializable for ResizePartRequest {
 		let data_end = &data["end"];
 
 		if !data_device.is_string() {
-			return Err(Box::new(RawError::new(
-				&data_device.to_string(),
-				"Property does not match type",
-			)));
+			return Err(InvalidJSONError::new(&data_device.to_string()));
 		}
 
 		if !data_partition_number.is_u64() {
-			return Err(Box::new(RawError::new(
-				&data_partition_number.to_string(),
-				"Property does not match type",
-			)));
+			return Err(InvalidJSONError::new(&data_partition_number.to_string()));
 		}
 
 		if !data_end.is_f64() {
-			return Err(Box::new(RawError::new(
-				&data_end.to_string(),
-				"Property does not match type",
-			)));
+			return Err(InvalidJSONError::new(&data_end.to_string()));
 		}
 
     Ok(ResizePartRequest {
@@ -58,4 +50,8 @@ impl Deserializable for ResizePartRequest {
 			end: data_end.as_f64().unwrap(),
 		})
 	}
+}
+
+impl Runable for ResizePartRequest {
+    
 }

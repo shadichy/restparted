@@ -1,12 +1,13 @@
-use std::error::Error;
-
 use crate::restparted::{
-	model::base::{Deserializable, RawError},
-	parted::models::{commands::Command, device::Device},
+	model::{base::serialize::Deserializable, errors::{invalid_json::InvalidJSONError, RawError, ToRawError}},
+	parted::models::{
+		commands::Command,
+		device::Device,
+		request::{Request, Runable},
+	},
 };
 
-use super::Request;
-
+#[derive(Clone, Debug)]
 pub struct NameRequest {
 	pub device: Device,
 	pub label: String,
@@ -23,24 +24,18 @@ impl From<NameRequest> for Request {
 }
 
 impl Deserializable for NameRequest {
-	type Error = Box<dyn Error>;
+	type Error = RawError;
 
 	fn from_json(data: serde_json::Value) -> Result<Self, Self::Error> {
 		let data_device = &data["device"];
 		let data_label = &data["label"];
 
 		if !data_device.is_string() {
-			return Err(Box::new(RawError::new(
-				&data_device.to_string(),
-				"Property does not match type",
-			)));
+			return Err(InvalidJSONError::new(&data_device.to_string()));
 		}
 
 		if !data_label.is_string() {
-			return Err(Box::new(RawError::new(
-				&data_label.to_string(),
-				"Property does not match type",
-			)));
+			return Err(InvalidJSONError::new(&data_label.to_string()));
 		}
 
 		Ok(NameRequest {
@@ -49,3 +44,5 @@ impl Deserializable for NameRequest {
 		})
 	}
 }
+
+impl Runable for NameRequest {}

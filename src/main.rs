@@ -1,12 +1,11 @@
 mod restparted;
 
 use actix_http::{
-	header::HeaderValue, Error, HttpService, Method, Request, Response, ResponseBuilder,
-	StatusCode,
+	header::HeaderValue, Error, HttpService, Method, Request, Response, ResponseBuilder, StatusCode,
 };
 use actix_server::Server;
 use futures_util::StreamExt;
-use restparted::parted::command::run_command;
+use restparted::parted::command::run_query;
 use rustls::ServerConfig;
 use serde_json::{json, Value};
 use std::{io, str, time::Duration};
@@ -24,8 +23,6 @@ async fn main() -> io::Result<()> {
 	let port: u16 = config.port;
 	let workers: usize = config.max_worker;
 
-	// info!("https://{address}:{port}");
-
 	Server::build()
 		.bind(appname, (address, port), || {
 			HttpService::build()
@@ -41,7 +38,7 @@ async fn main() -> io::Result<()> {
 						if req.method() != Method::POST {
 							status_code = StatusCode::BAD_REQUEST;
 							body = json!({
-								"message": "Invalid request.",
+								"message": "Invalid request",
 							});
 							break;
 						}
@@ -56,23 +53,17 @@ async fn main() -> io::Result<()> {
 						if body_json.is_err() {
 							status_code = StatusCode::NOT_ACCEPTABLE;
 							body = json!({
-								"message": "Invalid payload.",
+								"message": "Invalid payload",
 							});
 							break;
 						}
 
-						let cmd_output = run_command(body_json.unwrap());
-						if cmd_output.is_err() {
-							status_code = StatusCode::INTERNAL_SERVER_ERROR;
-							body = json!({
-								"message": "Invalid command",
-								"error": cmd_output.err().unwrap().to_string(),
-							});
-							break;
+						body = run_query(body_json.unwrap());
+						if body["error"].to_string().is_empty() {
+							status_code = StatusCode::OK;
+						} else {
+							status_code = StatusCode::INTERNAL_SERVER_ERROR
 						}
-
-						status_code = StatusCode::OK;
-						body = cmd_output.unwrap();
 						break;
 					}
 

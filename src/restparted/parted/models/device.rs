@@ -1,8 +1,8 @@
-use std::{error::Error, path::Path, sync::Mutex};
+use std::{path::Path, sync::Mutex};
 
 use regex::Regex;
 
-use crate::restparted::{model::base::RawError, CONFIG};
+use crate::restparted::{model::errors::RawError, CONFIG};
 
 #[derive(PartialEq, Eq, Clone)]
 enum DeviceType {
@@ -13,10 +13,8 @@ enum DeviceType {
 	MajMin = 4,
 }
 
-#[derive(Clone)]
-pub struct Device {
-	pub path: String,
-}
+#[derive(Clone, Debug)]
+pub struct Device(String);
 
 static DEFAULT_DEVICE: Mutex<Device> = Mutex::new(Device::new(String::new()));
 
@@ -30,18 +28,18 @@ impl Device {
 	const SYSFS_DEVICE_PREFIX: &'static str = "/sys/dev/block/";
 
 	pub const fn new(device: String) -> Self {
-		Device { path: device }
+		Device(device)
 	}
 }
 
 impl ToString for Device {
 	fn to_string(&self) -> String {
-		self.path.clone()
+		self.0.clone()
 	}
 }
 
 impl TryFrom<&str> for Device {
-	type Error = Box<dyn Error>;
+	type Error = RawError;
 
 	fn try_from(value: &str) -> Result<Self, Self::Error> {
 		let dev_type: DeviceType;
@@ -61,7 +59,7 @@ impl TryFrom<&str> for Device {
 				dev_type = DeviceType::Default
 			}
 		} else {
-			return Err(Box::new(RawError::new(value, "Unknown device")));
+			return Err(RawError::new(value, "Unknown device"));
 		}
 
 		if !starts_with_devfs {
@@ -72,15 +70,15 @@ impl TryFrom<&str> for Device {
 		}
 
 		if !Path::new(&dev_path).exists() {
-			return Err(Box::new(RawError::new(value, "Device does not exist")));
+			return Err(RawError::new(value, "Device does not exist"));
 		}
 
-		Ok(Device { path: dev_path })
+		Ok(Device(dev_path))
 	}
 }
 
 impl TryFrom<String> for Device {
-	type Error = Box<dyn Error>;
+	type Error = RawError;
 
 	fn try_from(value: String) -> Result<Self, Self::Error> {
 		Self::try_from(value.as_str())

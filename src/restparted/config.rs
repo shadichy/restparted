@@ -16,6 +16,8 @@ pub struct Config {
 	pub fallback_device: String,
 
 	pub max_worker: usize,
+
+	pub parted_executable: String,
 }
 
 impl Config {
@@ -34,6 +36,7 @@ impl Config {
 			port: 0,
 			fallback_device: String::new(),
 			max_worker: 1,
+			parted_executable: String::new(),
 		}
 	}
 
@@ -59,22 +62,33 @@ impl Config {
 
 			let data: Value = data_result.unwrap();
 
-			if data["address"].is_string() {
-				self.address = data["address"].as_str().unwrap().to_string();
+			let data_address = &data["address"];
+			if data_address.is_string() {
+				self.address = data_address.as_str().unwrap().to_string();
 			}
-			
-			if data["port"].is_u64() {
-				self.port = data["port"].as_u64().unwrap() as u16;
+
+			let data_port = &data["port"];
+			if data_port.is_u64() {
+				self.port = data_port.as_u64().unwrap() as u16;
 			}
-			
-			if data["fallback_device"].is_string() {
-				self.fallback_device = data["fallback_device"].as_str().unwrap().to_string();
+
+			let data_fallback_device = &data["fallback_device"];
+			if data_fallback_device.is_string() {
+				self.fallback_device = data_fallback_device.as_str().unwrap().to_string();
 			}
-			
-			if data["max_worker"].is_u64() {
-				self.max_worker = data["max_worker"].as_u64().unwrap() as usize;
+
+			let data_max_worker = &data["max_worker"];
+			if data_max_worker.is_u64() {
+				self.max_worker = data_max_worker.as_u64().unwrap() as usize;
 			}
-			
+
+			let data_parted_executable = &data["parted_executable"];
+			if data_parted_executable.is_string()
+				&& Path::new(data_parted_executable.as_str().unwrap()).exists()
+			{
+				self.parted_executable = data_parted_executable.as_str().unwrap().to_string();
+			}
+
 			break;
 		}
 		self.clone()
@@ -114,8 +128,9 @@ impl Default for Config {
 		Config {
 			address: String::from("0.0.0.0"),
 			port: 8443,
-			fallback_device: fallback_device,
+			fallback_device,
 			max_worker: 4,
+			parted_executable: String::from("/bin/parted"),
 		}
 	}
 }

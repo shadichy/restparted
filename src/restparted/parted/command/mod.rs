@@ -1,8 +1,19 @@
+pub mod check;
+pub mod mkfs;
+pub mod move_part;
+pub mod resize_part;
+
+pub mod help;
+
 use std::{process::Command, sync::Mutex};
 
 use serde_json::Value;
 
-use crate::restparted::{model::base::serialize::Serializable, parted::models::{request::Request, response::Response}, CONFIG};
+use crate::restparted::{
+	model::base::serialize::Serializable,
+	parted::models::{request::Request, response::Response},
+	CONFIG,
+};
 
 static PARTED_CMD: Mutex<String> = Mutex::new(String::new());
 

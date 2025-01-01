@@ -1,6 +1,6 @@
 use crate::restparted::{
 	model::{base::serialize::Deserializable, errors::RawError},
-	parted::models::{commands::Command, request::Runable, response::Response, request::Request},
+	parted::{command::help::HelpCommand, models::{commands::Command, request::{Request, Runable}, response::Response}},
 };
 
 #[derive(Clone, Debug)]
@@ -40,6 +40,6 @@ impl Deserializable for HelpRequest {
 
 impl Runable for HelpRequest {
 	fn run(&self) -> Response {
-		todo!()
+		Response::new(HelpCommand::query(self.target.clone()))
 	}
 }

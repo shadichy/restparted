@@ -16,6 +16,7 @@ pub struct CreatePartRequest {
 	pub part_type: Option<PartitionType>,
 	pub name: Option<String>,
 	pub fs_type: FileSystem,
+	pub fs_name: Option<String>,
 	pub start: f64,
 	pub end: f64,
 }
@@ -52,6 +53,7 @@ impl Deserializable for CreatePartRequest {
 		let data_part_type = &data["part_type"];
 		let data_name = &data["name"];
 		let data_fs_type = &data["fs_type"];
+		let data_fs_name = &data["fs_name"];
 		let data_start = &data["start"];
 		let data_end = &data["end"];
 
@@ -88,11 +90,19 @@ impl Deserializable for CreatePartRequest {
 			fs_type = FileSystem::EXT2
 		}
 
+		let fs_name: Option<String>;
+		if data_fs_name.is_string() {
+			fs_name = Some(String::from(data_fs_name.as_str().unwrap()))
+		} else {
+			fs_name = None
+		}
+
 		Ok(CreatePartRequest {
 			device: Device::try_from(data_device.as_str().unwrap())?,
 			part_type,
 			name,
 			fs_type,
+			fs_name,
 			start: data_start.as_f64().unwrap(),
 			end: data_end.as_f64().unwrap(),
 		})

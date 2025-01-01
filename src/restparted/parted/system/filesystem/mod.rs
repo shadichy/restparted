@@ -1,6 +1,8 @@
 use crate::restparted::model::errors::{enum_conversion::EnumConversionError, RawError, ToRawError};
 
-pub mod create_filesystem;
+pub mod create;
+pub mod resize;
+pub mod specific;
 
 #[allow(non_camel_case_types)]
 #[derive(PartialEq, Eq, Clone, Debug)]
@@ -23,30 +25,32 @@ pub enum FileSystem {
 	APFS1 = 15,
 	APFS2 = 16,
 	ASFS = 17,
-	BTRFS = 18,
-	EXT2 = 19,
-	EXT3 = 20,
-	EXT4 = 21,
-	F2FS = 22,
-	FAT16 = 23,
-	FAT32 = 24,
-	HFS = 25,
-	HFS_PLUS = 26,
-	HFSX = 27,
-	HP_UFS = 28,
-	JFS = 29,
-	LINUX_SWAP = 30,
-	LINUX_SWAP_NEW = 31,
-	LINUX_SWAP_OLD = 32,
-	LINUX_SWAP_V0 = 33,
-	LINUX_SWAP_V1 = 34,
-	NILFS2 = 35,
-	NTFS = 36,
-	REISERFS = 37,
-	SUN_UFS = 38,
-	SWSUSP = 39,
-	UDF = 40,
-	XFS = 41,
+	BCACHEFS = 18,
+	BTRFS = 19,
+	EXFAT = 20,
+	EXT2 = 21,
+	EXT3 = 22,
+	EXT4 = 23,
+	F2FS = 24,
+	FAT16 = 25,
+	FAT32 = 26,
+	HFS = 27,
+	HFS_PLUS = 28,
+	HFSX = 29,
+	HP_UFS = 30,
+	JFS = 31,
+	LINUX_SWAP = 32,
+	LINUX_SWAP_NEW = 33,
+	LINUX_SWAP_OLD = 34,
+	LINUX_SWAP_V0 = 35,
+	LINUX_SWAP_V1 = 36,
+	NILFS2 = 37,
+	NTFS = 38,
+	REISERFS = 39,
+	SUN_UFS = 40,
+	SWSUSP = 41,
+	UDF = 42,
+	XFS = 43,
 }
 impl FileSystem {
 	const STR_AFFS0: &'static str = "affs0";
@@ -67,7 +71,9 @@ impl FileSystem {
 	const STR_APFS1: &'static str = "apfs1";
 	const STR_APFS2: &'static str = "apfs2";
 	const STR_ASFS: &'static str = "asfs";
+	const STR_BCACHEFS: &'static str = "bcachefs";
 	const STR_BTRFS: &'static str = "btrfs";
+	const STR_EXFAT: &'static str = "exfat";
 	const STR_EXT2: &'static str = "ext2";
 	const STR_EXT3: &'static str = "ext3";
 	const STR_EXT4: &'static str = "ext4";
@@ -114,7 +120,9 @@ impl ToString for FileSystem {
 			Self::APFS1 => Self::STR_APFS1,
 			Self::APFS2 => Self::STR_APFS2,
 			Self::ASFS => Self::STR_ASFS,
+			Self::BCACHEFS => Self::STR_BCACHEFS,
 			Self::BTRFS => Self::STR_BTRFS,
+			Self::EXFAT => Self::STR_EXFAT,
 			Self::EXT2 => Self::STR_EXT2,
 			Self::EXT3 => Self::STR_EXT3,
 			Self::EXT4 => Self::STR_EXT4,
@@ -165,7 +173,9 @@ impl TryFrom<&str> for FileSystem {
 			Self::STR_APFS1 => Ok(Self::APFS1),
 			Self::STR_APFS2 => Ok(Self::APFS2),
 			Self::STR_ASFS => Ok(Self::ASFS),
+			Self::STR_BCACHEFS => Ok(Self::BCACHEFS),
 			Self::STR_BTRFS => Ok(Self::BTRFS),
+			Self::STR_EXFAT => Ok(Self::EXFAT),
 			Self::STR_EXT2 => Ok(Self::EXT2),
 			Self::STR_EXT3 => Ok(Self::EXT3),
 			Self::STR_EXT4 => Ok(Self::EXT4),

@@ -7,14 +7,17 @@ pub enum Command {
 	Name = 4,
 	CreateTable = 5,
 	CreatePart = 6,
-	Rescue = 7,
-	ResizePart = 8,
-	DeletePart = 9,
-	SetFlag = 10,
-	SetPartFlag = 11,
-	ToggleFlag = 12,
-	TogglePartFlag = 13,
-	SetType = 14,
+	Format = 7,
+	MovePart = 8,
+	PartCheck = 9,
+	Rescue = 10,
+	ResizePart = 11,
+	DeletePart = 12,
+	SetFlag = 13,
+	SetPartFlag = 14,
+	ToggleFlag = 15,
+	TogglePartFlag = 16,
+	SetType = 17,
 }
 
 impl Command {
@@ -24,6 +27,9 @@ impl Command {
 	const STR_NAME: &'static str = "name";
 	const STR_CREATE_TABLE: &'static str = "create_table";
 	const STR_CREATE_PART: &'static str = "create_part";
+	const STR_FORMAT: &'static str = "mkfs";
+	const STR_MOVE_PART: &'static str = "move";
+	const STR_PART_CHECK: &'static str = "check";
 	const STR_RESCUE: &'static str = "rescue";
 	const STR_RESIZE_PART: &'static str = "resize_part";
 	const STR_DELETE_PART: &'static str = "delete_part";
@@ -51,6 +57,7 @@ impl Command {
 			Self::TogglePartFlag => "toggle",
 			Self::SetType => "type",
 			Self::Help => "help",
+			_ => "null",
 		})
 	}
 }
@@ -64,6 +71,9 @@ impl ToString for Command {
 			Self::Name => Self::STR_NAME,
 			Self::CreateTable => Self::STR_CREATE_TABLE,
 			Self::CreatePart => Self::STR_CREATE_PART,
+			Self::Format => Self::STR_FORMAT,
+			Self::MovePart => Self::STR_MOVE_PART,
+			Self::PartCheck => Self::STR_PART_CHECK,
 			Self::Rescue => Self::STR_RESCUE,
 			Self::ResizePart => Self::STR_RESIZE_PART,
 			Self::DeletePart => Self::STR_DELETE_PART,
@@ -86,6 +96,9 @@ impl From<&str> for Command {
 			Self::STR_NAME => Self::Name,
 			Self::STR_CREATE_TABLE => Self::CreateTable,
 			Self::STR_CREATE_PART => Self::CreatePart,
+			Self::STR_FORMAT => Self::Format,
+			Self::STR_MOVE_PART => Self::MovePart,
+			Self::STR_PART_CHECK => Self::PartCheck,
 			Self::STR_RESCUE => Self::Rescue,
 			Self::STR_RESIZE_PART => Self::ResizePart,
 			Self::STR_DELETE_PART => Self::DeletePart,

@@ -83,6 +83,7 @@ impl Deserializable for AlignCheckRequest {
 		let data_device = &data["device"];
 		let data_align_check_type = &data["type"];
 		let data_partition_number = &data["number"];
+		let partition_number;
 
 		if !data_device.is_string() {
 			return Err(InvalidJSONError::new(&data_device.to_string()));
@@ -92,14 +93,16 @@ impl Deserializable for AlignCheckRequest {
 			return Err(InvalidJSONError::new(&data_align_check_type.to_string()));
 		}
 
-		if !data_partition_number.is_u64() {
-			return Err(InvalidJSONError::new(&data_partition_number.to_string()));
+		if data_partition_number.is_u64() {
+			partition_number = data_partition_number.as_u64().unwrap() as u16;
+		} else {
+			partition_number = 1;
 		}
 
 		Ok(AlignCheckRequest {
 			device: Device::try_from(data_device.as_str().unwrap())?,
 			align_check_type: AlignCheckType::try_from(data_align_check_type.as_str().unwrap())?,
-			partition_number: data_partition_number.as_u64().unwrap() as u16,
+			partition_number,
 		})
 	}
 }

@@ -20,7 +20,7 @@ use version::VersionRequest;
 use crate::restparted::{
 	model::{
 		base::serialize::Deserializable,
-		errors::{invalid_json::InvalidJSONError, ToRawError},
+		errors::{invalid_json::InvalidJSONError, RawError, ToRawError},
 	},
 	parted::{
 		command::parted_cmd,
@@ -34,8 +34,11 @@ mod align_check;
 mod create_part;
 mod create_table;
 mod delete_part;
+mod format;
 mod help;
+mod move_part;
 mod name;
+mod part_check;
 mod print;
 mod rescue;
 mod resize_part;
@@ -83,6 +86,26 @@ impl Request {
 		}
 	}
 
+	fn run_wrapper(command: Command, data: Value) -> Result<Response, RawError> {
+		match command {
+			Command::Version => Ok(VersionRequest::from_json(data)?.run()),
+			Command::Print => Ok(PrintRequest::from_json(data)?.run()),
+			Command::AlignCheck => Ok(AlignCheckRequest::from_json(data)?.run()),
+			Command::Name => Ok(NameRequest::from_json(data)?.run()),
+			Command::CreateTable => Ok(CreateTableRequest::from_json(data)?.run()),
+			Command::Rescue => Ok(RescueRequest::from_json(data)?.run()),
+			Command::ResizePart => Ok(ResizePartRequest::from_json(data)?.run()),
+			Command::DeletePart => Ok(DeletePartRequest::from_json(data)?.run()),
+			Command::SetFlag => Ok(SetFlagRequest::from_json(data)?.run()),
+			Command::SetPartFlag => Ok(SetPartFlagRequest::from_json(data)?.run()),
+			Command::ToggleFlag => Ok(ToggleFlagRequest::from_json(data)?.run()),
+			Command::TogglePartFlag => Ok(TogglePartFlagRequest::from_json(data)?.run()),
+			Command::SetType => Ok(SetTypeRequest::from_json(data)?.run()),
+			Command::Help => Ok(HelpRequest::from_json(data)?.run()),
+			_ => Err(RawError::new(&data.to_string(), "Unsupported action")),
+		}
+	}
+
 	pub fn run(data: Value) -> Response {
 		let data_command = &data["command"];
 
@@ -90,22 +113,12 @@ impl Request {
 			return Response::new_error(InvalidJSONError::new(&data_command.to_string()));
 		}
 
-		match Command::from(data_command.as_str().unwrap()) {
-			Command::Version => Self::try_run(VersionRequest::from_json(data.clone())),
-			Command::Print => Self::try_run(PrintRequest::from_json(data.clone())),
-			Command::AlignCheck => Self::try_run(AlignCheckRequest::from_json(data.clone())),
-			Command::Name => Self::try_run(NameRequest::from_json(data.clone())),
-			Command::CreateTable => Self::try_run(CreateTableRequest::from_json(data.clone())),
-			Command::CreatePart => Self::try_run(CreatePartRequest::from_json(data.clone())),
-			Command::Rescue => Self::try_run(RescueRequest::from_json(data.clone())),
-			Command::ResizePart => Self::try_run(ResizePartRequest::from_json(data.clone())),
-			Command::DeletePart => Self::try_run(DeletePartRequest::from_json(data.clone())),
-			Command::SetFlag => Self::try_run(SetFlagRequest::from_json(data.clone())),
-			Command::SetPartFlag => Self::try_run(SetPartFlagRequest::from_json(data.clone())),
-			Command::ToggleFlag => Self::try_run(ToggleFlagRequest::from_json(data.clone())),
-			Command::TogglePartFlag => Self::try_run(TogglePartFlagRequest::from_json(data.clone())),
-			Command::SetType => Self::try_run(SetTypeRequest::from_json(data.clone())),
-			Command::Help => Self::try_run(HelpRequest::from_json(data.clone())),
+		let output = Self::run_wrapper(Command::from(data_command.as_str().unwrap()), data);
+
+		if output.is_err() {
+			Response::new_error(output.unwrap_err())
+		} else {
+			output.unwrap()
 		}
 	}
 }
@@ -116,7 +129,7 @@ impl ToString for Request {
 	}
 }
 
-pub trait Runable : Debug + Clone + Into<Request>{
+pub trait Runable: Debug + Clone + Into<Request> {
 	fn run(&self) -> Response {
 		parted_cmd(Into::<Request>::into((*self).clone()).to_shell_cmd())
 	}

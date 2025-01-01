@@ -4,6 +4,7 @@ use serde_json::{from_str, json, Value};
 
 use crate::restparted::model::base::serialize::Serializable;
 
+#[derive(Debug)]
 pub struct Response(Value);
 
 impl Response {

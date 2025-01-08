@@ -1,8 +1,18 @@
-use crate::restparted::model::errors::{enum_conversion::EnumConversionError, RawError, ToRawError};
+use specific::{
+	affs, amufs, apfs, asfs, bcachefs, btrfs, extfs, f2fs, fat, hfs, jfs, lvm, nilfs2, ntfs, reiserfs, swap, swsusp, udf, ufs, xfs, FSProp
+};
+
+use crate::restparted::model::errors::{
+	enum_conversion::EnumConversionError, RawError, ToRawError,
+};
 
 pub mod create;
 pub mod resize;
 pub mod specific;
+
+pub fn initialize() {
+	specific::initialize();
+}
 
 #[allow(non_camel_case_types)]
 #[derive(PartialEq, Eq, Clone, Debug)]
@@ -51,7 +61,10 @@ pub enum FileSystem {
 	SWSUSP = 41,
 	UDF = 42,
 	XFS = 43,
+	LVM2 = 44,
+	NONE = 45,
 }
+
 impl FileSystem {
 	const STR_AFFS0: &'static str = "affs0";
 	const STR_AFFS1: &'static str = "affs1";
@@ -97,6 +110,62 @@ impl FileSystem {
 	const STR_SWSUSP: &'static str = "swsusp";
 	const STR_UDF: &'static str = "udf";
 	const STR_XFS: &'static str = "xfs";
+	const STR_LVM2: &'static str = "lvm";
+	const STR_NONE: &'static str = "cleared";
+
+	fn get_data(&self) -> FSProp {
+		match self {
+			Self::APFS1 => apfs::APFS1(),
+			Self::APFS2 => apfs::APFS2(),
+			Self::BCACHEFS => bcachefs::BCACHEFS(),
+			Self::BTRFS => btrfs::BTRFS(),
+			Self::EXFAT => fat::EXFAT(),
+			Self::EXT2 => extfs::EXT2(),
+			Self::EXT3 => extfs::EXT3(),
+			Self::EXT4 => extfs::EXT4(),
+			Self::F2FS => f2fs::F2FS(),
+			Self::FAT16 => fat::FAT16(),
+			Self::FAT32 => fat::FAT32(),
+			Self::HFS_PLUS => hfs::HFS_PLUS(),
+			Self::HFS => hfs::HFS(),
+			Self::HFSX => hfs::HFSX(),
+			Self::JFS => jfs::JFS(),
+			Self::LINUX_SWAP => swap::LINUX_SWAP(),
+			Self::LINUX_SWAP_NEW => swap::LINUX_SWAP_NEW(),
+			Self::LINUX_SWAP_OLD => swap::LINUX_SWAP_OLD(),
+			Self::LINUX_SWAP_V0 => swap::LINUX_SWAP_V0(),
+			Self::LINUX_SWAP_V1 => swap::LINUX_SWAP_V1(),
+			Self::NILFS2 => nilfs2::NILFS2(),
+			Self::NTFS => ntfs::NTFS(),
+			Self::REISERFS => reiserfs::REISERFS(),
+			Self::SWSUSP => swap::SWSUSP(),
+			Self::UDF => udf::UDF(),
+			Self::XFS => xfs::XFS(),
+			Self::LVM2 => lvm::LVM2(),
+			Self::NONE => specific::CLEARED(),
+			_ => specific::UNSUPPORTED(),
+		}
+	}
+
+	fn is_supported(&self) -> bool {
+		self.get_data().is_supported()
+	}
+
+	fn size_limit(&self) -> (u64, u64) {
+		self.get_data().size_limit_mb()
+	}
+
+	fn can_grow(&self) -> bool {
+		self.get_data().can_grow()
+	}
+
+	fn can_live_grow(&self) -> bool {
+		self.get_data().can_live_grow()
+	}
+
+	fn can_shrink(&self) -> bool {
+		self.get_data().can_shrink()
+	}
 }
 
 impl ToString for FileSystem {
@@ -146,6 +215,8 @@ impl ToString for FileSystem {
 			Self::SWSUSP => Self::STR_SWSUSP,
 			Self::UDF => Self::STR_UDF,
 			Self::XFS => Self::STR_XFS,
+			Self::LVM2 => Self::STR_LVM2,
+			Self::NONE => Self::STR_NONE,
 		})
 	}
 }
@@ -199,6 +270,8 @@ impl TryFrom<&str> for FileSystem {
 			Self::STR_SWSUSP => Ok(Self::SWSUSP),
 			Self::STR_UDF => Ok(Self::UDF),
 			Self::STR_XFS => Ok(Self::XFS),
+			Self::STR_LVM2 => Ok(Self::LVM2),
+			Self::STR_NONE => Ok(Self::NONE),
 			_ => Err(EnumConversionError::new(value)),
 		}
 	}

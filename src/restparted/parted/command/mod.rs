@@ -31,6 +31,10 @@ pub fn parted_cmd(args: Vec<String>) -> Response {
 	)
 }
 
+pub fn cmd_exists(command: &str) -> bool {
+	Command::new("which").arg(command).output().is_ok()
+}
+
 pub fn run_query(query: Value) -> Value {
 	Request::run(query).to_json()
 }

@@ -14,5 +14,6 @@ pub static CONFIG: Mutex<Config> = Mutex::new(Config::new());
 pub fn initialize() {
 	*CONFIG.lock().unwrap() = Config::from_config_file();
 	command::initialize();
-	models::device::initialize();
+	models::initialize();
+	parted::initialize();
 }
